@@ -27,6 +27,12 @@ type Config struct {
 	// matcher mode specific config
 	Matcher Matcher `yaml:"matcher"`
 	Auth    Auth    `yaml:"auth"`
+	TLS     *TLS    `yaml:",inline"`
+}
+
+type TLS struct {
+	Certificate string `yaml:"certificate"`
+	Key         string `yaml:"key"`
 }
 
 type Auth struct {

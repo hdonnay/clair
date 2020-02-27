@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -34,6 +38,10 @@ func httptransport(ctx context.Context, conf config.Config) (*http.Server, error
 		return nil, fmt.Errorf("mode not implemented: %v", conf.Mode)
 	}
 	if err != nil {
+		return nil, err
+	}
+
+	if err := setTLS(srv, conf); err != nil {
 		return nil, err
 	}
 	if err := setAuth(srv, conf); err != nil {
@@ -155,9 +163,44 @@ func setAuth(srv *http.Server, conf config.Config) error {
 			return err
 		}
 		srv.Handler = AuthHandler(srv.Handler, psk)
+	case "mtls":
+		if srv.TLSConfig == nil {
+			return errors.New("config asks for mutual tls without configuring tls")
+		}
+		pool, err := x509.SystemCertPool()
+		if err != nil {
+			return err
+		}
+		certfile, ok := conf.Auth.Params[`certificate`]
+		if ok {
+			pem, err := ioutil.ReadFile(certfile)
+			if err != nil {
+				return err
+			}
+			if !pool.AppendCertsFromPEM(pem) {
+				return errors.New("no certificates loaded from file")
+			}
+		}
+		srv.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		srv.TLSConfig.ClientCAs = pool
 	case "":
 	default:
 		return fmt.Errorf("unknown auth kind %q", conf.Auth.Name)
+	}
+	return nil
+}
+
+func setTLS(srv *http.Server, conf config.Config) error {
+	if conf.TLS == nil {
+		return nil
+	}
+	cert, err := tls.LoadX509KeyPair(conf.TLS.Certificate, conf.TLS.Key)
+	if err != nil {
+		return err
+	}
+	srv.TLSConfig = &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		Certificates: []tls.Certificate{cert},
 	}
 	return nil
 }

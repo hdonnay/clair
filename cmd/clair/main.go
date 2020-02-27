@@ -58,11 +58,21 @@ func main() {
 	if err != nil {
 		logger.Fatal().Msgf("failed to create http transport: %v", err)
 	}
-	logger.Info().Str("component", "clair-main").Msgf("launching http transport on %v", server.Addr)
 	go func() {
-		err := server.ListenAndServe()
+		https := server.TLSConfig != nil
+		proto := "http"
+		if https {
+			proto = "https"
+		}
+		logger.Info().Str("component", "clair-main").Msgf("launching %s transport on %v", proto, server.Addr)
+		var err error
+		if https {
+			err = server.ListenAndServeTLS("", "")
+		} else {
+			err = server.ListenAndServe()
+		}
 		if err != nil && err != http.ErrServerClosed {
-			logger.Error().Str("component", "clair-main").Msgf("launching http transport failed %v", err)
+			logger.Error().Str("component", "clair-main").Msgf("launching %s transport failed %v", proto, err)
 			cancel()
 		}
 	}()
