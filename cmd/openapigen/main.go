@@ -26,34 +26,41 @@ func main() {
 	outFile := flag.String("out", "./discoveryhandler_gen.go", "output go file")
 	flag.Parse()
 
+	embed := []byte{}
 	inF, err := os.Open(*inFile)
-	if err != nil {
-		log.Fatal(err)
+	if inF != nil {
+		defer inF.Close()
 	}
-	defer inF.Close()
-	tmp := map[interface{}]interface{}{}
-	if err := yaml.NewDecoder(inF).Decode(&tmp); err != nil {
-		log.Fatal(err)
+	if err != nil {
+		embed = []byte(`""`)
 	}
 
+	// we haven't set embed to an empty string,
+	// lets parse the json and fill
+	if len(embed) == 0 {
+		tmp := map[interface{}]interface{}{}
+		if err := yaml.NewDecoder(inF).Decode(&tmp); err != nil {
+			log.Fatal(err)
+		}
+		embed, err = json.Marshal(convert(tmp))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	ck := sha256.Sum256(embed)
+
+	// use AST to fill const values
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, *sourceFile, nil, 0)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	embed, err := json.Marshal(convert(tmp))
-	if err != nil {
-		log.Fatal(err)
-	}
-	ck := sha256.Sum256(embed)
-
-	for i, decl := range f.Decls {
+	for _, decl := range f.Decls {
 		constDecl := decl.(*ast.GenDecl)
 		for _, spec := range constDecl.Specs {
 			vs := spec.(*ast.ValueSpec)
-			name := vs.Names[i].Name
-			value := vs.Values[i]
+			name := vs.Names[0].Name
+			value := vs.Values[0]
 			switch name {
 			case "_openapiJSON":
 				value.(*ast.BasicLit).Value = "`" + string(embed) + "`"
