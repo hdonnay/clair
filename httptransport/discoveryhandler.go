@@ -7,7 +7,7 @@ import (
 	je "github.com/quay/claircore/pkg/jsonerr"
 )
 
-//go:generate go run embed_openapi.go
+//go:generate go run ../cmd/openapigen/main.go
 
 // DiscoveryHandler serves the embedded OpenAPI spec.
 func DiscoveryHandler() http.Handler {
