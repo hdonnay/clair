@@ -588,6 +588,7 @@ while (page.Next != None) {
 <p><em>See the &quot;Notifier.AMQP&quot; object in our <a href="concepts/../reference/config.html">config reference</a> for complete configuration details.</em></p>
 <p>The notifier also supports delivering to an AMQP broker. With AMQP delivery you can control whether a callback is delivered to the broker or whether notifications are directly delivered to the queue.</p>
 <p>This allows the developer of the AMQP consumer to determine the logic of notification processing.</p>
+<p>Note that AMQP delivery only supports AMQP 0.x protocol (e.g. RabbitMQ). If you need to publish notifications on AMQP 1.x message queue (e.g. ActiveMQ), you can use STOMP delivery.</p>
 <h3><a class="header" href="#direct-delivery" id="direct-delivery">Direct Delivery</a></h3>
 <p>If the notifier's configuration specifies <code>direct: true</code> for AMQP, notifications will be delivered directly to the configured exchange.</p>
 <p>When <code>direct</code> is set, the <code>rollup</code> property may be set to instruct the notifier to send a max number of notifications in a single AMQP message. This allows a balance between size of the message and number of messages delivered to the queue.</p>
@@ -2339,7 +2340,11 @@ This operation does not require authentication
 </tbody></table>
 <h1><a class="header" href="#clairctl" id="clairctl">Clairctl</a></h1>
 <p><code>clairctl</code> is a command line tool for working with Clair.
-This CLI is capable of generating manifests from most public registries (dockerhub, quay.io, Red Hat Container Catalog) and submitting them for analysis to a running Clair.</p>
+This CLI is capable of generating manifests from most public registries
+(dockerhub, quay.io, Red Hat Container Catalog) and submitting them for
+analysis to a running Clair.</p>
+<p>Note that if the Clair instance has authentication configured, the value
+provided to the <code>issuer</code> flag must be on the list accepted by the server.</p>
 <pre><code>NAME:
    clairctl - interact with a clair API
 
@@ -2360,9 +2365,11 @@ COMMANDS:
    help, h          Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   -D             print debugging logs (default: false)
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   -D                           print debugging logs (default: false)
+   --config value, -c value     clair configuration file (default: &quot;config.yaml&quot;) [$CLAIR_CONF]
+   --issuer value, --iss value  jwt &quot;issuer&quot; to use when making authenticated requests (default: &quot;clairctl&quot;)
+   --help, -h                   show help (default: false)
+   --version, -v                print the version (default: false)
 </code></pre>
 <pre><code>NAME:
    clairctl manifest - print a clair manifest for the named container
@@ -2395,21 +2402,23 @@ USAGE:
 DESCRIPTION:
    Run configured exporters and export to a file.
 
+   A configuration file is needed to run this command, see 'clairctl help'
+   for how to specify one.
+
 OPTIONS:
-   --strict                  Return non-zero exit when updaters report errors. (default: false)
-   --config value, -c value  clair configuration file (default: &quot;config.yaml&quot;) [$CLAIR_CONF]
+   --strict  Return non-zero exit when updaters report errors. (default: false)
 </code></pre>
 <pre><code>NAME:
    clairctl import-updaters - import updates
 
 USAGE:
-   clairctl import-updaters [command options] in
+   clairctl import-updaters input...
 
 DESCRIPTION:
-   Import updates from a file.
+   Import updates from files or HTTP URIs.
 
-OPTIONS:
-   --config value, -c value  clair configuration file (default: &quot;config.yaml&quot;) [$CLAIR_CONF]
+   A configuration file is needed to run this command, see 'clairctl help'
+   for how to specify one.
 </code></pre>
 <h1><a class="header" href="#config" id="config">Config</a></h1>
 <h2><a class="header" href="#cli-flags-and-env-vars" id="cli-flags-and-env-vars">CLI Flags And ENV Vars</a></h2>
@@ -2456,6 +2465,7 @@ notifier:
     matcher_addr: &quot;&quot;
     poll_interval: &quot;&quot;
     delivery_interval: &quot;&quot;
+    disable_summary: false
     webhook: null
     amqp: null
     stomp: null
@@ -2623,6 +2633,11 @@ The frequency at which the notifier will query at Matcher for Update Operations.
 
 The frequency at which the notifier attempt delivery of created or previously failed
 notifications
+</code></pre>
+<h4><a class="header" href="#disable_summary-false" id="disable_summary-false"> disable_summary: false</a></h4>
+<pre><code>A boolean
+
+Controls whether notifications should be summarized to one per manifest or not.
 </code></pre>
 <h4><a class="header" href="#webhook-object" id="webhook-object"> webhook: &lt;object&gt;</a></h4>
 <pre><code>Configures the notifier for webhook delivery
