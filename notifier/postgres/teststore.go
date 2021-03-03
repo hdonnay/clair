@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"testing"
@@ -9,11 +10,11 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/log/testingadapter"
 	"github.com/jackc/pgx/v4/pgxpool"
-	_ "github.com/jackc/pgx/v4/stdlib" // Needed for sqlx.Open
-	"github.com/jmoiron/sqlx"
-	"github.com/quay/clair/v4/notifier/migrations"
+	_ "github.com/jackc/pgx/v4/stdlib" // Needed for sql.Open
 	"github.com/quay/claircore/test/integration"
 	"github.com/remind101/migrate"
+
+	"github.com/quay/clair/v4/notifier/migrations"
 )
 
 const (
@@ -21,17 +22,20 @@ const (
 	DefaultDSN = `host=localhost port=5432 user=clair dbname=clair sslmode=disable`
 )
 
-func TestStore(ctx context.Context, t testing.TB) (*sqlx.DB, *Store, *KeyStore, func()) {
+func init() {
 	if os.Getenv(integration.EnvPGConnString) == "" {
 		os.Setenv(integration.EnvPGConnString, DefaultDSN)
 	}
+}
 
-	db, err := integration.NewDB(ctx, t)
+func TestDB(ctx context.Context, t testing.TB) *pgxpool.Pool {
+	dbh, err := integration.NewDB(ctx, t)
 	if err != nil {
 		t.Fatalf("unable to create test database: %v", err)
 	}
+	t.Cleanup(func() { dbh.Close(ctx, t) })
 
-	cfg := db.Config()
+	cfg := dbh.Config()
 	cfg.ConnConfig.LogLevel = pgx.LogLevelError
 	cfg.ConnConfig.Logger = testingadapter.NewLogger(t)
 	// we are going to use pgx for more control over connection pool and
@@ -42,25 +46,19 @@ func TestStore(ctx context.Context, t testing.TB) (*sqlx.DB, *Store, *KeyStore, 
 	}
 
 	dsn := fmt.Sprintf("host=%s port=%d database=%s user=%s", cfg.ConnConfig.Host, cfg.ConnConfig.Port, cfg.ConnConfig.Database, cfg.ConnConfig.User)
-	sx, err := sqlx.Open("pgx", dsn)
+	t.Log(dsn)
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Fatalf("failed to sqlx Open: %v", err)
 	}
-	t.Log(dsn)
+	defer db.Close()
 
 	// run migrations
-	migrator := migrate.NewPostgresMigrator(sx.DB)
+	migrator := migrate.NewPostgresMigrator(db)
 	migrator.Table = migrations.MigrationTable
-	err = migrator.Exec(migrate.Up, migrations.Migrations...)
-	if err != nil {
+	if err := migrator.Exec(migrate.Up, migrations.Migrations...); err != nil {
 		t.Fatalf("failed to perform migrations: %v", err)
 	}
-
-	s := NewStore(pool)
-	ks := NewKeyStore(pool)
-	return sx, s, ks, func() {
-		sx.Close()
-		pool.Close()
-		db.Close(ctx, t)
-	}
+	t.Cleanup(pool.Close)
+	return pool
 }

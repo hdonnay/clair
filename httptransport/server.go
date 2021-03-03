@@ -210,16 +210,15 @@ func (t *Server) configureNotifierMode(ctx context.Context) error {
 	t.Handle(NotificationAPIPath,
 		intromw.InstrumentedHandler(NotificationAPIPath, t.traceOpt, NotificationHandler(t.notifier)))
 
-	ks := t.notifier.KeyStore(ctx)
-	if ks == nil {
-		return clairerror.ErrNotInitialized{Msg: "NotifierMode requires the notifier to provide a non-nil key store"}
-	}
-
+	gone := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusGone)
+	})
 	t.Handle(KeysAPIPath,
-		intromw.InstrumentedHandler(KeysAPIPath, t.traceOpt, KeysHandler(ks)))
-
+		intromw.InstrumentedHandler(KeysAPIPath, t.traceOpt, gone))
 	t.Handle(KeyByIDAPIPath,
-		intromw.InstrumentedHandler(KeyByIDAPIPath+"_KEY", t.traceOpt, KeyByIDHandler(ks)))
+		intromw.InstrumentedHandler(KeyByIDAPIPath+"_KEY", t.traceOpt, gone))
 
 	return nil
 }
