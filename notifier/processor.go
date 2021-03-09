@@ -132,8 +132,8 @@ func (p *Processor) create(ctx context.Context, e Event, prev uuid.UUID) error {
 		lookup: make(map[string]int),
 	}
 	eg, wctx := errgroup.WithContext(ctx)
-	eg.Go(getAffected(wctx, p.indexer, !p.NoSummary, diff.Added, Added, &tab))
-	eg.Go(getAffected(wctx, p.indexer, !p.NoSummary, diff.Removed, Removed, &tab))
+	eg.Go(getAffected(wctx, p.indexer, p.NoSummary, diff.Added, Added, &tab))
+	eg.Go(getAffected(wctx, p.indexer, p.NoSummary, diff.Removed, Removed, &tab))
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("failed to get affected manifests: %v", err)
 	}
@@ -203,7 +203,7 @@ type notifTab struct {
 // GetAffected issues AffectedManifest calls in chunks and merges the result.
 //
 // Its signature is weird to make use in an errgroup a little bit nicer.
-func getAffected(ctx context.Context, ic indexer.Service, summary bool, vs []claircore.Vulnerability, r Reason, out *notifTab) func() error {
+func getAffected(ctx context.Context, ic indexer.Service, nosummary bool, vs []claircore.Vulnerability, r Reason, out *notifTab) func() error {
 	const chunk = 1000
 	return func() error {
 		var s []claircore.Vulnerability
@@ -226,7 +226,7 @@ func getAffected(ctx context.Context, ic indexer.Service, summary bool, vs []cla
 				}
 				// The vulns slice is sorted most severe to lease severe, so
 				// when in summary mode, we only need to check the initial vuln.
-				if summary {
+				if !nosummary {
 					vuln := a.Vulnerabilities[vulns[0]]
 					key := digest.String()
 					var n *Notification
