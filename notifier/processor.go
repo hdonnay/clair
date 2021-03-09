@@ -191,6 +191,9 @@ func min(a, b int) int {
 	return b
 }
 
+// NotifTab is a handle for a slice of Notifications.
+//
+// It has supporting structures for concurrent use and summaries.
 type notifTab struct {
 	sync.Mutex
 	N      []Notification
