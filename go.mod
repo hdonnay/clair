@@ -1,6 +1,6 @@
 module github.com/quay/clair/v4
 
-go 1.13
+go 1.15
 
 require (
 	github.com/docker/docker v1.13.1 // indirect
