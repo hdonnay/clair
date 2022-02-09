@@ -4,6 +4,8 @@ import (
 	"encoding"
 	"encoding/base64"
 	"fmt"
+	"net/url"
+	"reflect"
 )
 
 // Base64 is a byte slice that encodes to and from base64-encoded strings.
@@ -41,18 +43,31 @@ func (b *Base64) UnmarshalText(in []byte) error {
 type Auth struct {
 	PSK       *AuthPSK       `yaml:"psk,omitempty" json:"psk,omitempty"`
 	Keyserver *AuthKeyserver `yaml:"keyserver,omitempty" json:"keyserver,omitempty"`
+	MTLS      *AuthMTLS      `yaml:"mtls,omitempty" json:"mtls,omitempty"`
 }
 
 // Any reports whether any sort of authentication is configured.
 func (a Auth) Any() bool {
-	return a.PSK != nil ||
-		a.Keyserver != nil
+	return len(a.populated()) != 0
+}
+
+// Populated returns a slice of elements that are not nil.
+func (a *Auth) populated() (n []string) {
+	v := reflect.ValueOf(a).Elem()
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		if !v.Field(i).IsNil() {
+			n = append(n, t.Field(i).Name)
+		}
+	}
+	return n
 }
 
 func (a *Auth) lint() ([]Warning, error) {
-	if a.PSK != nil && a.Keyserver != nil {
+	ns := a.populated()
+	if len(ns) > 1 {
 		return []Warning{{
-			msg: `both "PSK" and "Keyserver" authentication methods are defined`,
+			msg: fmt.Sprintf(`multiple authentication methods defined: %v`, ns),
 		}}, nil
 	}
 	return nil, nil
@@ -92,6 +107,65 @@ func (a *AuthPSK) validate(_ Mode) ([]Warning, error) {
 		return nil, &Warning{
 			path: ".iss",
 			msg:  "no issuers defined",
+		}
+	}
+	return nil, nil
+}
+
+type AuthMTLS struct {
+	Client struct {
+		// The filesystem path where a TLS certificate can be read.
+		//
+		// It is an error for this to be the empty string.
+		Cert string `yaml:"cert" json:"cert"`
+		// The filesystem path where a TLS private key can be read.
+		//
+		// It is an error for this to be the empty string.
+		Key string `yaml:"key" json:"key"`
+	} `yaml:"client" json:"client"`
+	Server struct {
+		// RootCA ...
+		//
+		// If empty, the system trust store will be used.
+		// It's possible this is a valid configuration, but unlikely.
+		RootCA string `yaml:"root_ca" json:"root_ca"`
+		// IDs is a list of URI SANs that are allowed.
+		//
+		// It is an error for this list to be empty or have invalid entries. See
+		// also: https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.6
+		IDs []string `yaml:"ids" json:"ids"`
+	} `yaml:"server" json:"server"`
+}
+
+func (a *AuthMTLS) validate(_ Mode) ([]Warning, error) {
+	if len(a.Server.IDs) == 0 {
+		return nil, &Warning{
+			path: ".server.ids",
+			msg:  "ids is empty",
+		}
+	}
+	for i, id := range a.Server.IDs {
+		u, err := url.Parse(id)
+		if err != nil {
+			return nil, err
+		}
+		if u.Scheme == "" {
+			return nil, &Warning{
+				path: fmt.Sprintf(".server.ids[%d]", i),
+				msg:  "URI does not have a scheme",
+			}
+		}
+	}
+	if a.Client.Cert == "" {
+		return nil, &Warning{
+			path: ".client.cert",
+			msg:  "no certificate provided",
+		}
+	}
+	if a.Client.Key == "" {
+		return nil, &Warning{
+			path: ".client.key",
+			msg:  "no key provided",
 		}
 	}
 	return nil, nil

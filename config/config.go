@@ -57,6 +57,11 @@ func (c *Config) validate(mode Mode) ([]Warning, error) {
 	if _, _, err := net.SplitHostPort(c.HTTPListenAddr); err != nil {
 		return nil, err
 	}
+	if c.Auth.MTLS != nil && c.TLS == nil {
+		return nil, &Warning{
+			msg: `mTLS is configured for authorization, but TLS is not configured`,
+		}
+	}
 	return c.lint()
 }
 
