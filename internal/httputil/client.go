@@ -1,9 +1,13 @@
 package httputil
 
 import (
+	"crypto/tls"
+	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"time"
+
+	"github.com/quay/clair/v4/middleware/auth"
 
 	"github.com/quay/clair/config"
 	"golang.org/x/net/publicsuffix"
@@ -37,6 +41,24 @@ func Client(next http.RoundTripper, cl *jwt.Claims, cfg *config.Config) (c *http
 	// Keep this organized from "best" to "worst". That way, we can add methods
 	// and keep everything working with some careful cluster rolling.
 	switch {
+	case cfg.Auth.MTLS != nil:
+		tr, ok := next.(*http.Transport)
+		if !ok {
+			return nil, false, fmt.Errorf("unable to configure non-Transport RoundTripper (%T)", next)
+		}
+		tc := tr.TLSClientConfig
+		if tc == nil {
+			tc = &tls.Config{}
+		}
+		tc.NextProtos = append(tc.NextProtos, "h2")
+		a := auth.MTLSClient{}
+		if err := a.From(cfg.Auth.MTLS); err != nil {
+			return nil, false, err
+		}
+		if err := a.Configure(tc); err != nil {
+			return nil, false, err
+		}
+		return c, true, nil
 	case cl == nil: // Skip signing
 	case cfg.Auth.Keyserver != nil:
 		sk.Key = []byte(cfg.Auth.Keyserver.Intraservice)
