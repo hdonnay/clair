@@ -25,6 +25,7 @@ import (
 	"github.com/quay/clair/v4/initialize"
 	"github.com/quay/clair/v4/initialize/auto"
 	"github.com/quay/clair/v4/introspection"
+	"github.com/quay/clair/v4/middleware/auth"
 )
 
 // Version is a version string, injected at build time for release builds.
@@ -127,6 +128,15 @@ func main() {
 				return fmt.Errorf("tls configuration failed: %w", err)
 			}
 			cfg.NextProtos = []string{"h2"}
+			if m := conf.Auth.MTLS; m != nil {
+				a := auth.MTLSServer{}
+				if err := a.From(m); err != nil {
+					return err
+				}
+				if err := a.Configure(cfg); err != nil {
+					return err
+				}
+			}
 			l = tls.NewListener(l, cfg)
 		}
 		down.Add(h.Server)
