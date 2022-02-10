@@ -16,6 +16,8 @@ func authHandler(cfg *config.Config, next http.Handler) (http.Handler, error) {
 
 	// Keep this ordered "best" to "worst".
 	switch {
+	case cfg.Auth.MTLS != nil:
+		checks = append(checks, auth.MTLS{})
 	case cfg.Auth.Keyserver != nil:
 		cfg := cfg.Auth.Keyserver
 		ks, err := auth.NewQuayKeyserver(cfg.API)
