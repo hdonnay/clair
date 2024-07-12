@@ -5,13 +5,16 @@ $Go.import("github.com/quay/clair/v4/rpc/internal/proto");
 
 # Common/helper parts:
 
-# Map is a generic map type.
-struct Map(Key, Value) {
-  entries @0 :List(Entry);
-  struct Entry {
-    key @0 :Key;
-    value @1 :Value;
-  }
+struct Map(Key, Value)
+$Go.doc("Map is a generic map type.")
+{
+	entries @0 :List(Entry);
+	struct Entry
+	$Go.doc("Map_Entry ...")
+	{
+		key @0 :Key;
+		value @1 :Value;
+	}
 }
 
 # Iterator is a generic iterator.
@@ -23,21 +26,24 @@ interface Iterator(T) {
 	done @1 ();
 }
 
-# Digest is the standard OCI digest type, with the exception that the actual digest is unencoded.
-struct Digest {
+struct Digest
+$Go.doc("Digest is the standard OCI digest type, with the exception that the actual digest is unencoded.")
+{
 	algorithm @0 :Text;
 	digest @1 :Data;
 }
 
+enum Services
+$Go.doc("Services indicates server capabilities.")
+{
+	indexer @0;
+	matcher @1;
+}
+
 interface Main {
-	capabilities @0 () -> (avail :List(Available));
+	capabilities @0 () -> (avail :List(Services));
 	indexer @1 () -> (srv :Indexer);
 	matcher @2 () -> (srv :Matcher);
-
-	enum Available {
-		indexer @0;
-		matcher @1;
-	}
 }
 
 # Indexer parts:
@@ -54,7 +60,9 @@ interface Index {
 	attrsFor @2 (pkg :Text, cb: Iterator(Attr)) -> ();
 }
 
-struct Metadata {
+struct Metadata
+$Go.doc("Metadata ...")
+{
 	digest @0 :Digest;
 	state @1 :Text;
 	error :union {
@@ -64,33 +72,42 @@ struct Metadata {
 	}
 }
 
-struct Manifest {
+using Annotations = Map(Text, Text);
+using Headers = Map(Text, List(Text));
+
+struct Layer
+$Go.doc("Layer ...")
+{
+	digest @0 :Digest;
+	uri @1 :Text;
+	mediaType @2 :Text;
+	headers @3 :Headers;
+	annotations @4 :Annotations;
+}
+
+struct Manifest
+$Go.doc("Manifest ...")
+{
 	digest @0 :Digest;
 	layers @1 :List(Layer);
 	annotations @2 :Annotations;
-
-	struct Layer {
-		digest @0 :Digest;
-		uri @1 :Text;
-		mediaType @2 :Text;
-		headers @3 :Headers;
-		annotations @4 :Annotations;
-	}
-
-	using Headers = Map(Text, List(Text));
-	using Annotations = Map(Text, Text);
 }
 
-
-struct Environment {
+struct Environment
+$Go.doc("Environment ...")
+{
 	id @0 :Text;
 }
 
-struct Package {
+struct Package
+$Go.doc("Package ...")
+{
 	id @0 :Text;
 }
 
-struct Attr {
+struct Attr
+$Go.doc("Attr ...")
+{
 	packageId @0 :Text;
 	kind @1 :Text;
 	data @2 :Map(Text, Text);

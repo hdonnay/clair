@@ -6,8 +6,9 @@ import (
 	"runtime"
 
 	"capnproto.org/go/capnp/v3/rpc"
-	"github.com/quay/clair/v4/rpc/internal/proto"
 	"github.com/quic-go/quic-go"
+
+	"github.com/quay/clair/v4/rpc/internal/proto"
 )
 
 type Client struct {
