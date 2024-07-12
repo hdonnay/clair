@@ -5,6 +5,7 @@ $Go.import("github.com/quay/clair/v4/rpc/internal/proto");
 
 # Common/helper parts:
 
+# Map is a generic map type.
 struct Map(Key, Value) {
   entries @0 :List(Entry);
   struct Entry {
@@ -12,22 +13,21 @@ struct Map(Key, Value) {
     value @1 :Value;
   }
 }
-# Map is a generic map type.
 
-interface Iterator(T) {
-	next @0 (item :T) -> stream;
-	done @1 ();
-}
 # Iterator is a generic iterator.
 #
 # The function signature looks odd, but think of it as a "push" iterator; it's driven server-side.
 # The caller must call "done" to check errors.
+interface Iterator(T) {
+	next @0 (item :T) -> stream;
+	done @1 ();
+}
 
+# Digest is the standard OCI digest type, with the exception that the actual digest is unencoded.
 struct Digest {
 	algorithm @0 :Text;
 	digest @1 :Data;
 }
-# Digest is the standard OCI digest type, with the exception that the actual digest is unencoded.
 
 interface Main {
 	capabilities @0 () -> (avail :List(Available));
