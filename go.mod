@@ -3,7 +3,7 @@ module github.com/quay/clair/v4
 go 1.21.9
 
 require (
-	capnproto.org/go/capnp/v3 v3.0.0-alpha-29
+	capnproto.org/go/capnp/v3 v3.0.1-alpha.1
 	github.com/Masterminds/semver v1.5.0
 	github.com/evanphx/json-patch/v5 v5.9.0
 	github.com/go-jose/go-jose/v3 v3.0.3
@@ -42,6 +42,7 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.14.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -104,5 +105,4 @@ require (
 	modernc.org/sqlite v1.29.9 // indirect
 	modernc.org/strutil v1.2.0 // indirect
 	modernc.org/token v1.1.0 // indirect
-	zenhack.net/go/util v0.0.0-20230414204917-531d38494cf5 // indirect
 )
